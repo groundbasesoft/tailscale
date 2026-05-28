@@ -32,6 +32,7 @@ import (
 	"tailscale.com/envknob"
 	"tailscale.com/feature"
 	"tailscale.com/feature/buildfeatures"
+	"tailscale.com/health"
 	"tailscale.com/ipn"
 	"tailscale.com/ipn/ipnstate"
 	"tailscale.com/net/netutil"
@@ -723,6 +724,17 @@ func StatusWithoutPeers(ctx context.Context) (*ipnstate.Status, error) {
 // StatusWithoutPeers returns the Tailscale daemon's status, without the peer info.
 func (lc *Client) StatusWithoutPeers(ctx context.Context) (*ipnstate.Status, error) {
 	return lc.status(ctx, "?peers=false")
+}
+
+// Health returns a snapshot of the daemon's current health, keyed by
+// [health.WarnableCode]. Returns an empty State (Warnings == nil) when the
+// daemon is healthy.
+func (lc *Client) Health(ctx context.Context) (*health.State, error) {
+	body, err := lc.get200(ctx, "/localapi/v0/health")
+	if err != nil {
+		return nil, err
+	}
+	return decodeJSON[*health.State](body)
 }
 
 func (lc *Client) status(ctx context.Context, queryString string) (*ipnstate.Status, error) {

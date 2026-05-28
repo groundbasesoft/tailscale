@@ -23,7 +23,10 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"software.sslmate.com/src/go-pkcs12"
 	"tailscale.com/atomicfile"
+	"tailscale.com/feature/buildfeatures"
+	"tailscale.com/health"
 	"tailscale.com/ipn"
+	"tailscale.com/tsconst"
 	"tailscale.com/version"
 )
 
@@ -112,6 +115,11 @@ func runCert(ctx context.Context, args []string) error {
 		certArgs.certFile = fileBase + ".crt"
 		certArgs.keyFile = fileBase + ".key"
 	}
+	if buildfeatures.HasHealth {
+		pollCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go pollCertPendingHealth(pollCtx, domain)
+	}
 	certPEM, keyPEM, err := localClient.CertPairWithValidity(ctx, domain, certArgs.minValidity)
 	if err != nil {
 		return err
@@ -165,6 +173,51 @@ func runCert(ctx context.Context, args []string) error {
 		}
 	}
 	return nil
+}
+
+// pollCertPendingHealth polls tailscaled's health every 2 seconds while a
+// cert fetch for domain is in flight, printing to stderr the
+// [tsconst.HealthWarnableTLSCertPending] warning if it mentions domain.
+// It stops when ctx is done.
+//
+// The first poll is delayed 1 second so we don't print anything when the
+// daemon returns a cached cert quickly.
+func pollCertPendingHealth(ctx context.Context, domain string) {
+	select {
+	case <-time.After(1 * time.Second):
+	case <-ctx.Done():
+		return
+	}
+	var printed bool
+	check := func() {
+		if printed {
+			return
+		}
+		st, err := localClient.Health(ctx)
+		if err != nil || st == nil {
+			return
+		}
+		ws, ok := st.Warnings[tsconst.HealthWarnableTLSCertPending]
+		if !ok {
+			return
+		}
+		if !strings.Contains(ws.Args[health.ArgDomains], domain) {
+			return
+		}
+		printed = true
+		fmt.Fprintf(os.Stderr, "%s: %s\n", ws.Title, ws.Text)
+	}
+	check()
+	t := time.NewTicker(2 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+			check()
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func writeIfChanged(filename string, contents []byte, mode os.FileMode) (changed bool, err error) {
