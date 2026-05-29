@@ -102,10 +102,10 @@ const (
 	// firewall is blocking the traffic.
 	RejectedDueToHostFirewall TailscaleRejectReason = 'W'
 
-	// RejectedDueToNoRealIPMapping means that the connector host has no real IP
+	// RejectedDueToUnknownAppConnectorTransitIP means that the connector host has no real IP
 	// mapping that matches the provided transit IP for this client, so the
 	// connector has no destination to forward the connection to.
-	RejectedDueToNoRealIPMapping TailscaleRejectReason = 'M'
+	RejectedDueToUnknownAppConnectorTransitIP TailscaleRejectReason = 'M'
 )
 
 func (r TailscaleRejectReason) String() string {
@@ -118,8 +118,8 @@ func (r TailscaleRejectReason) String() string {
 		return "host-ip-forwarding-unavailable"
 	case RejectedDueToHostFirewall:
 		return "host-firewall"
-	case RejectedDueToNoRealIPMapping:
-		return "no-real-ip-mapping"
+	case RejectedDueToUnknownAppConnectorTransitIP:
+		return "unknown-app-connector-transit-ip"
 	}
 	return fmt.Sprintf("0x%02x", byte(r))
 }

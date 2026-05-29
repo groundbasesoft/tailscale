@@ -137,7 +137,7 @@ func (dh *datapathHandler) HandlePacketFromWireGuard(p *packet.Parsed, tun *tstu
 				Src:    p.Src,
 				Dst:    p.Dst,
 				Proto:  p.IPProto,
-				Reason: packet.RejectedDueToNoRealIPMapping,
+				Reason: packet.RejectedDueToUnknownAppConnectorTransitIP,
 			}
 			if err := tun.InjectOutbound(packet.Generate(rj, nil)); err != nil {
 				dh.debugLogf("error sending TSMP flow rejection packet: %v", err)

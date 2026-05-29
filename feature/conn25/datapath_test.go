@@ -147,7 +147,7 @@ func newFakeTUN(t *testing.T) *tstun.Wrapper {
 	bus := eventbustest.NewBus(t)
 	tun := tstun.Wrap(t.Logf, fake, reg, bus)
 
-	// Create a packet filter. Wwe're not testing the filter, so just make
+	// Create a packet filter. We're not testing the filter, so just make
 	// one that allows everything through.
 	protos := views.SliceOf([]ipproto.Proto{
 		ipproto.TCP,
@@ -155,11 +155,6 @@ func newFakeTUN(t *testing.T) *tstun.Wrapper {
 	})
 	allIPs := netip.MustParsePrefix("0.0.0.0/0")
 	matches := []filter.Match{
-		{
-			IPProto: protos,
-			Srcs:    []netip.Prefix{allIPs},
-			Dsts:    []filtertype.NetPortRange{{Net: allIPs, Ports: filtertype.AllPorts}},
-		},
 		{
 			IPProto: protos,
 			Srcs:    []netip.Prefix{allIPs},
@@ -219,7 +214,7 @@ func TestHandlePacketFromWireGuard(t *testing.T) {
 				Proto:  ipproto.UDP,
 				Src:    netip.AddrPortFrom(unknownSrcIP, clientPort),
 				Dst:    netip.AddrPortFrom(transitIP, serverPort),
-				Reason: packet.RejectedDueToNoRealIPMapping,
+				Reason: packet.RejectedDueToUnknownAppConnectorTransitIP,
 			}, nil),
 		},
 		{
